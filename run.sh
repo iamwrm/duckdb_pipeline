@@ -1,7 +1,9 @@
+set -ueo pipefail 
+
 sudo apt install gcc cmake g++ ninja-build
 
-mkdir build
-rm -rf build/*
+mkdir build -p
+# rm -rf build/*
 cd build
 
 cmake .. \

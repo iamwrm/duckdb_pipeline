@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(NBodyDistances)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(ExternalProject)
@@ -10,9 +10,9 @@ include(ExternalProject)
 ExternalProject_Add(
     duckdb_ext
     GIT_REPOSITORY https://github.com/duckdb/duckdb.git
-    GIT_TAG v0.7.1
+    GIT_TAG v1.0.0
     CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/duckdb
-    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/duckdb/lib/libduckdb_static.a
+    BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/duckdb/lib/libduckdb.so
 )
 
 # Eigen
@@ -35,7 +35,7 @@ target_include_directories(n_body_distances PRIVATE
 
 # Link libraries
 target_link_libraries(n_body_distances PRIVATE 
-    ${CMAKE_BINARY_DIR}/duckdb/lib/libduckdb_static.a
+    ${CMAKE_BINARY_DIR}/duckdb/lib/libduckdb.so
 )
 
 # Add dependencies
