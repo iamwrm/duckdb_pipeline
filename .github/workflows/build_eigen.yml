@@ -1,0 +1,22 @@
+name: Build and Run
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up environment
+      run: |
+        lscpu && free -h && df -h
+
+    - name: Run build script
+      run: |
+        bash eigen_nobody/run.sh
