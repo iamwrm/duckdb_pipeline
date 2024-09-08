@@ -4,6 +4,9 @@
 #include <duckdb.hpp>
 #include <Eigen/Dense>
 
+#include <dbg.h>
+
+
 struct Body {
     int id;
     double x, y, z;
@@ -14,16 +17,15 @@ std::vector<Body> loadBodiesFromDuckDB(duckdb::Connection& conn) {
     auto result = conn.Query("SELECT id, x, y, z FROM bodies");
     result->Print();
 
-
-    
-    // for (auto& row : result) {
-    //     bodies.push_back({
-    //         row.GetValue<int>(0),
-    //         row.GetValue<double>(1),
-    //         row.GetValue<double>(2),
-    //         row.GetValue<double>(3)
-    //     });
-    // }
+    const auto & row_count = result->RowCount();
+    for (unsigned int i=0; i<row_count; i++) {
+        bodies.push_back({
+            result->GetValue<int>(0,i),
+            result->GetValue<double>(1,i),
+            result->GetValue<double>(2,i),
+            result->GetValue<double>(3,i)
+        });
+    }
     
     return bodies;
 }

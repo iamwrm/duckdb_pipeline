@@ -1,3 +1,4 @@
 build/
 main.zip
 duckdb-main/
+compile_commands.json

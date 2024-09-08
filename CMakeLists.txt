@@ -24,6 +24,11 @@ ExternalProject_Add(
     BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/eigen/include/eigen3
 )
 
+include(FetchContent)
+
+FetchContent_Declare(dbg_macro GIT_REPOSITORY https://github.com/sharkdp/dbg-macro)
+FetchContent_MakeAvailable(dbg_macro)
+
 # Add the executable
 add_executable(n_body_distances main.cpp)
 
@@ -36,6 +41,7 @@ target_include_directories(n_body_distances PRIVATE
 # Link libraries
 target_link_libraries(n_body_distances PRIVATE 
     ${CMAKE_BINARY_DIR}/duckdb/lib/libduckdb.so
+    dbg_macro
 )
 
 # Add dependencies
