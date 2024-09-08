@@ -12,17 +12,36 @@ struct Body {
     double mass;
 };
 
-Eigen::Vector3d calculateForce(const Body& body1, const Body& body2) {
-    Eigen::Vector3d r = body2.position - body1.position;
-    double distance = r.norm();
-    double forceMagnitude = G * body1.mass * body2.mass / (distance * distance);
-    return forceMagnitude * r.normalized();
+Eigen::MatrixXd calculateForces(const std::vector<Body>& bodies) {
+    int n = bodies.size();
+    Eigen::MatrixXd forces = Eigen::MatrixXd::Zero(n, 3);
+    Eigen::MatrixXd positions(n, 3);
+    Eigen::VectorXd masses(n);
+
+    for (int i = 0; i < n; ++i) {
+        positions.row(i) = bodies[i].position;
+        masses(i) = bodies[i].mass;
+    }
+
+    for (int i = 0; i < n; ++i) {
+        Eigen::MatrixXd diff = positions.rowwise() - positions.row(i);
+        Eigen::VectorXd distanceSq = diff.rowwise().squaredNorm();
+        distanceSq = distanceSq.unaryExpr([](double x) { return x > 0 ? x : 1e-10; });
+        Eigen::VectorXd forceMagnitude = G * masses(i) * masses.array() / distanceSq.array();
+        
+        Eigen::MatrixXd forceVectors = diff.array().colwise() * (forceMagnitude.array() / distanceSq.array().sqrt());
+        forces.row(i) = forceVectors.colwise().sum();
+    }
+
+    return forces;
 }
 
-void updatePositionAndVelocity(Body& body, const Eigen::Vector3d& force) {
-    Eigen::Vector3d acceleration = force / body.mass;
-    body.velocity += acceleration * dt;
-    body.position += body.velocity * dt;
+void updateBodies(std::vector<Body>& bodies, const Eigen::MatrixXd& forces) {
+    for (size_t i = 0; i < bodies.size(); ++i) {
+        Eigen::Vector3d acceleration = forces.row(i) / bodies[i].mass;
+        bodies[i].velocity += acceleration * dt;
+        bodies[i].position += bodies[i].velocity * dt;
+    }
 }
 
 int main() {
@@ -35,17 +54,8 @@ int main() {
     int numSteps = 1000;
 
     for (int step = 0; step < numSteps; ++step) {
-        for (size_t i = 0; i < bodies.size(); ++i) {
-            Eigen::Vector3d totalForce(0, 0, 0);
-            
-            for (size_t j = 0; j < bodies.size(); ++j) {
-                if (i != j) {
-                    totalForce += calculateForce(bodies[i], bodies[j]);
-                }
-            }
-            
-            updatePositionAndVelocity(bodies[i], totalForce);
-        }
+        Eigen::MatrixXd forces = calculateForces(bodies);
+        updateBodies(bodies, forces);
 
         // Print positions (only for demonstration, you might want to store or visualize this data)
         std::cout << "Step " << step << ":\n";
