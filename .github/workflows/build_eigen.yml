@@ -19,4 +19,4 @@ jobs:
 
     - name: Run build script
       run: |
-        bash eigen_nobody/run.sh
+        bash eigen_nbody/run.sh
