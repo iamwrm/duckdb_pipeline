@@ -7,6 +7,7 @@ from tabulate import tabulate
 import sys
 import time
 import os
+import textwrap
 
 SSH_CONFIG_FILE = "aws-ec2-manager-ssh.config"
 
@@ -157,13 +158,14 @@ def config_ec2_instance(profile, instance_id):
 
         host_alias = f"{instance_id}.aws-ec2-manager"
 
-        ssh_config_entry = f"""
-Host {host_alias}
-    HostName {public_ip}
-    User ubuntu
-    StrictHostKeyChecking no
-    UserKnownHostsFile=/dev/null
-"""
+        ssh_config_entry = textwrap.dedent(f"""
+            Host {host_alias}
+                HostName {public_ip}
+                User ubuntu
+                StrictHostKeyChecking no
+                UserKnownHostsFile=/dev/null
+        """)
+
         # Ensure the config file exists
         if not os.path.exists(SSH_CONFIG_FILE):
             with open(SSH_CONFIG_FILE, "w") as f:
