@@ -1,9 +1,7 @@
-#include "duckdb.hpp"
-#include "duckdb/main/appender.hpp"
-#include "fmt/base.h"
-#include <any>
-
+#include <duckdb.hpp>
 #include <fmt/format.h>
+
+#include <any>
 #include <vector>
 
 using namespace duckdb;
