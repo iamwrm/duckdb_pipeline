@@ -2,18 +2,31 @@
 #include <memory>
 #include <vector>
 
-class OrderBook {
-  double last_price;
-
-public:
-  void SetLastPrice(double price) { last_price = price; }
-  double GetLastPrice() { return last_price; }
-};
-
 class Base {
 public:
   virtual void OnEvent(int a) = 0;
   virtual ~Base() = default;
+};
+
+class OrderBook {
+  double last_price;
+  std::vector<std::shared_ptr<Base>> listeners;
+
+public:
+  void SetLastPrice(double price) { last_price = price; }
+  double GetLastPrice() { return last_price; }
+
+  void AddListener(std::shared_ptr<Base> listener) {
+    listeners.push_back(listener);
+  }
+
+  void OnEvent(int a) {
+    for (auto &listener : listeners) {
+      listener->OnEvent(a);
+    }
+  }
+
+  void ClearListeners() { listeners.clear(); }
 };
 
 template <typename T> class A : public Base {
@@ -43,16 +56,11 @@ int main() {
   auto ob = std::make_shared<OrderBook>();
   ob->SetLastPrice(100);
 
-  auto a = std::make_unique<A<OrderBook>>(ob);
-  auto b = std::make_unique<B<OrderBook>>(ob);
+  ob->AddListener(std::make_shared<A<OrderBook>>(ob));
+  ob->AddListener(std::make_shared<B<OrderBook>>(ob));
 
-  std::vector<std::unique_ptr<Base>> vec;
-  vec.push_back(std::move(a));
-  vec.push_back(std::move(b));
+  ob->OnEvent(1);
 
-  for (auto &ptr : vec) {
-    ptr->OnEvent(1);
-  }
-
+  ob->ClearListeners();
   fmt::println("Done");
 }
