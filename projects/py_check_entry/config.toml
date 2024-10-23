@@ -1,0 +1,5 @@
+
+working_dir_base = "local_dir/check_entry_tmp"
+output_dir = "local_dir/check_entry_output"
+start_date = 20240101
+end_date = 20240102
