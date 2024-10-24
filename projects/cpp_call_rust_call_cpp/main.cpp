@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include "rust_ffi.h"
 
 struct StateData {
   std::string name;
