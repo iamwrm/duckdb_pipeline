@@ -1,0 +1,12 @@
+[package]
+name = "crc32c_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "crc32c_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.19", features = ["extension-module"] }
+crc32c = "0.6"
