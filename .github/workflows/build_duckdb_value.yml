@@ -1,4 +1,4 @@
-name: Build and Run Eigen nbody
+name: Build and Run Duckdb null value
 
 on:
   push:
