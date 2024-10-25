@@ -3,3 +3,6 @@ main.zip
 duckdb-main/
 compile_commands.json
 .cache
+
+a.out
+local_data/

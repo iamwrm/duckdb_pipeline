@@ -2,32 +2,39 @@ import asyncio
 from concurrent.futures import ProcessPoolExecutor
 import time
 
+
 # Example of a compute-heavy function (calculates the nth Fibonacci number)
-def compute_fibonacci(n):
+def compute_fibonacci(n, k):
     if n <= 1:
-        return n
+        return n * k
     else:
-        return compute_fibonacci(n-1) + compute_fibonacci(n-2)
+        return compute_fibonacci(n - 1, k) + compute_fibonacci(n - 2, k)
+
 
 # Asynchronous wrapper to run the compute-heavy function in a ProcessPoolExecutor
-async def run_compute_heavy(executor, n):
+async def run_compute_heavy(executor, f, *args):
     loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(executor, compute_fibonacci, n)
-    return result
+    return await loop.run_in_executor(executor, f, *args)
+
 
 async def main():
     # Define the numbers for which to compute Fibonacci numbers
-    fibonacci_numbers = [i for i in range(30, 100)]
+    fibonacci_numbers = [i for i in range(30, 40)]
+    k = 1.1
 
     # Create a ProcessPoolExecutor with a number of workers equal to the CPU cores
     with ProcessPoolExecutor() as executor:
         # Schedule all compute-heavy tasks concurrently
-        tasks = [asyncio.create_task(run_compute_heavy(executor, n)) for n in fibonacci_numbers]
+        tasks = [
+            asyncio.create_task(run_compute_heavy(executor, compute_fibonacci, n, k))
+            for n in fibonacci_numbers
+        ]
 
         # Optionally, show progress as tasks complete
         for coroutine in asyncio.as_completed(tasks):
             result = await coroutine
             print(f"Fibonacci result: {result}")
+
 
 if __name__ == "__main__":
     start_time = time.time()
