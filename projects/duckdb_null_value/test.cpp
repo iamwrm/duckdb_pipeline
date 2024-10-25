@@ -162,6 +162,7 @@ TEST_CASE("Appender", "[appender]")
 
         auto result = con.Query("SELECT * FROM a");
         Value value = result->GetValue(0, 0);
+        fmt::println("{}", value.type().ToString());
         fmt::println("{}", value.ToString());
     }
 }
