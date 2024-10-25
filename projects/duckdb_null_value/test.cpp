@@ -1,3 +1,4 @@
+#include "duckdb/common/types.hpp"
 #include "fmt/base.h"
 #include <any>
 #include <cstdint>
@@ -164,5 +165,39 @@ TEST_CASE("Appender", "[appender]")
         Value value = result->GetValue(0, 0);
         fmt::println("{}", value.type().ToString());
         fmt::println("{}", value.ToString());
+    }
+
+    SECTION("Appender STRUCT nested")
+    {
+        con.Query("CREATE TABLE a(i STRUCT(a INTEGER, b INTEGER, c STRUCT(d INTEGER, e INTEGER)))");
+        con.Query(R"(
+            INSERT INTO a VALUES 
+                ({a : 1, b : 2, c : {d : 3, e : 4}}), 
+                ({a : 5, b : 6, c : {d : 7, e : 8}}), 
+                ({a : 9, b : 10, c : {d : 11, e : 12}})
+        )");
+
+        print_result(con, "SELECT * FROM a");
+
+        auto result = con.Query("SELECT * FROM a");
+        Value value = result->GetValue(0, 0);
+        fmt::println("{}", value.type().ToString());
+        fmt::println("{}", value.ToSQLString());
+
+        auto children = duckdb::StructValue::GetChildren(value);
+        int i = 0;
+        for (auto& child : children) {
+            if (child.type().IsNested()) {
+                fmt::println("Nested type: {}", child.type().ToString());
+            }
+            auto name = duckdb::StructType::GetChildName(value.type(), i);
+            auto type = duckdb::StructType::GetChildType(value.type(), i);
+
+            fmt::println("{}: {} = {}", name, type.ToString(), child.ToString());
+            i++;
+        }
+    }
+    SECTION("nested type in c api")
+    {
     }
 }
