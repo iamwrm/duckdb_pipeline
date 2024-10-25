@@ -10,12 +10,12 @@ if [[ "$@" == *"clean"* ]]; then
     rm -rf build/*
 fi
 
-cd build
-
 # if not found clang-19, run setup_clang19.sh
 if ! command -v clang-19 &>/dev/null; then
     bash ./setup_clang19.sh
 fi
+
+cd build
 
 export CC=clang-19
 export CXX=clang++-19
