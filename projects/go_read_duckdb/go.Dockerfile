@@ -1,12 +1,11 @@
 # Build stage
 FROM golang:1.23-bookworm
+FROM registry.access.redhat.com/ubi9:latest
 
 # install go
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libc6-dev \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN dnf install -y \
+    golang \
+    && rm -rf /var/cache/dnf
 
 WORKDIR /app
 COPY go.mod go.sum ./
