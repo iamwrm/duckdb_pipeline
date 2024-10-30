@@ -14,10 +14,12 @@ docker build -t csv-reader-py . -f python.Dockerfile
 echo "Generating CSV file..."
 docker run --rm -v "$(pwd):/app" csv-reader-py python3 create_data.py
 
-
 echo "Run golang in ubi9"
-docker build -t csv-reader-go-ubi9 . -f go.ubi9.Dockerfile
-docker run --rm -v "$(pwd):/data/" -w /data csv-reader-go-ubi9 /app/read_data 
+DOCKER_NAME=csv-reader-go-ubi9
+docker build -t $DOCKER_NAME . -f go.ubi9.Dockerfile
+docker run --rm -v "$(pwd):/data/" -w /data $DOCKER_NAME /app/read_data 
 
-# docker build -t csv-reader-go-ubi8 . -f go.ubi8.Dockerfile
-# docker run --rm -v "$(pwd):/data/" -w /data csv-reader-go-ubi8 /app/read_data 
+echo "Run golang in golang"
+DOCKER_NAME=csv-reader-go-golang
+docker build -t $DOCKER_NAME . -f go.golang.Dockerfile
+docker run --rm -v "$(pwd):/data/" -w /data $DOCKER_NAME /app/read_data 
