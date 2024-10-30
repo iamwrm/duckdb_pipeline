@@ -36,7 +36,5 @@ ln -sf ${BUILD_DIR}/compile_commands.json ../
 
 cmake --build . -j 4
 
-./duckdb_null_value
-
 ctest -V
 

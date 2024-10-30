@@ -1,5 +1,3 @@
-#include "duckdb/common/types.hpp"
-#include "fmt/base.h"
 #include <any>
 #include <cstdint>
 
