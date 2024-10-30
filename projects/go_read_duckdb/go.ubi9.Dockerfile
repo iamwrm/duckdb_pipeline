@@ -1,10 +1,9 @@
 # Build stage
-FROM golang:1.23-bookworm
 FROM registry.access.redhat.com/ubi9:latest
 
 # install go
 RUN dnf install -y \
-    golang \
+    golang gcc g++ \
     && rm -rf /var/cache/dnf
 
 WORKDIR /app
@@ -16,4 +15,4 @@ COPY read_data.go .
 RUN CGO_ENABLED=1 GOOS=linux go build -o read_data
 
 
-CMD ["./read_data"]
+CMD ["/app/read_data"]
