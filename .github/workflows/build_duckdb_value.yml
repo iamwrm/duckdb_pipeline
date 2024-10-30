@@ -1,4 +1,4 @@
-name: Build and Run Duckdb null value
+name: Build and Run Duckdb null value and C++ complex data type
 
 on:
   push:
