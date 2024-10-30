@@ -19,4 +19,4 @@ jobs:
 
     - name: Run build script
       run: |
-        bash projects/duckdb_null_value/run.sh
+        bash projects/duckdb_null_value/run_in_docker.sh

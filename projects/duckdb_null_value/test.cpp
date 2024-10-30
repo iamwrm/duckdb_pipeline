@@ -155,6 +155,7 @@ TEST_CASE("Appender", "[appender]")
 
     SECTION("Appender STRUCT")
     {
+        fmt::println("Appender STRUCT");
         con.Query("CREATE TABLE a(i STRUCT(a INTEGER, b INTEGER))");
         con.Query("INSERT INTO a VALUES ({a : 1, b : 2}), ({a : 3, b : 4}), ({a : "
                   "5, b : 6})");
@@ -165,6 +166,15 @@ TEST_CASE("Appender", "[appender]")
         Value value = result->GetValue(0, 0);
         fmt::println("{}", value.type().ToString());
         fmt::println("{}", value.ToString());
+
+        duckdb::Appender appender(con, "a");
+        appender.AppendRow(duckdb::Value::STRUCT({ {"a", 11}, {"b", 22} }));
+        appender.AppendRow(duckdb::Value::STRUCT({ {"a", 33}, {"b", 44} }));
+        appender.AppendRow(duckdb::Value::STRUCT({ {"a", 55}, {"b", 66} }));
+        appender.Flush();
+
+        print_result(con, "SELECT * FROM a");
+
     }
 
     SECTION("Appender STRUCT nested")

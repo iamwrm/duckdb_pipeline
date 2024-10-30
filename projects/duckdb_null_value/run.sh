@@ -2,27 +2,29 @@ set -ueo pipefail
 
 cd `dirname $0`
 
-mkdir -p build
+BUILD_DIR=build
+
+if [ -f /.dockerenv ]; then
+    echo "Running in Docker";
+    BUILD_DIR=build_in_docker
+fi
+
+mkdir -p ${BUILD_DIR}
 
 # Check if clean argument is provided
 if [[ "$@" == *"clean"* ]]; then
     echo "Cleaning build directory..."
-    rm -rf build/*
+    rm -rf ${BUILD_DIR}/*
 fi
 
-# if not found clang-19, run setup_clang19.sh
-if ! command -v clang-19 &>/dev/null; then
-    bash ./setup_clang19.sh
-fi
+cd ${BUILD_DIR}
 
-cd build
-
-export CC=clang-19
-export CXX=clang++-19
+export CC=clang
+export CXX=clang++
 
 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja
 
-ln -sf build/compile_commands.json ../
+ln -sf ${BUILD_DIR}/compile_commands.json ../
 
 cmake --build . -j 4
 
