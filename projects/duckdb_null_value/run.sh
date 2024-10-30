@@ -19,8 +19,16 @@ fi
 
 cd ${BUILD_DIR}
 
-export CC=clang
-export CXX=clang++
+# check if clang-19 is installed
+if ! command -v clang-19 &> /dev/null; then
+    echo "clang-19 could not be found"
+    exit 1
+else
+    echo "clang-19 found"
+fi
+
+export CC=clang-19
+export CXX=clang++-19
 
 cmake .. -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -G Ninja
 
