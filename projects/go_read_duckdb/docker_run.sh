@@ -9,7 +9,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-echo "Building Docker image..."
+echo "Create CSV file..."
 docker build -t csv-reader-py . -f python.Dockerfile
 echo "Generating CSV file..."
 docker run --rm -v "$(pwd):/app" csv-reader-py python3 create_data.py
