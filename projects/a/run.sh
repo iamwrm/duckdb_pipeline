@@ -3,6 +3,8 @@ set -ueo pipefail
 sudo apt update
 sudo apt install -y gcc cmake g++ ninja-build
 
+cd `dirname $0`
+
 mkdir build -p
 # rm -rf build/*
 cd build
