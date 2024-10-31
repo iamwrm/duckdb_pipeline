@@ -39,7 +39,7 @@ func main() {
 		if err := rows.Scan(&id, &name); err != nil {
 			log.Fatal("Error scanning row:", err)
 		}
-		fmt.Printf("ID: %d, Name: %s\n", id, name)
+		fmt.Printf("in Go, ID: %d, Name: %s\n", id, name)
 	}
 
 	if err = rows.Err(); err != nil {
