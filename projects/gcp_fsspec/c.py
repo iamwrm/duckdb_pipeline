@@ -116,23 +116,27 @@ class GCSSymlinkHandler:
         prefix = resolved_path + "/" if resolved_path else ""
         logger.info(f"Prefix: {prefix}")
 
-        # List blobs with the resolved prefix
-        blobs = list(self.client.list_blobs(self.bucket, prefix=prefix, delimiter="/"))
-        logger.info(f"Blobs: {blobs}")
+        items = []
 
-        # Collect prefixes (subdirectories)
+        # Check for direct symlinks in the directory
+        blobs = list(self.client.list_blobs(self.bucket, prefix=path.rstrip("/") + "/", delimiter="/"))
+        symlink_blobs = [blob for blob in blobs if self._is_symlink(blob.name)]
+
+        for symlink_blob in symlink_blobs:
+            # Extract the symlink name without the .symlink extension
+            symlink_name = os.path.basename(symlink_blob.name)[:-8]  # Remove '.symlink'
+            target = self._get_symlink_target(symlink_blob)
+            items.append(f"{symlink_name} -> {target}")
+
+        # List blobs and prefixes in the resolved path
+        blobs = list(self.client.list_blobs(self.bucket, prefix=prefix, delimiter="/"))
         prefixes = list(
             self.client.list_blobs(self.bucket, prefix=prefix, delimiter="/").prefixes
         )
-        logger.info(f"Prefixes: {prefixes}")
-
-        items = []
 
         # Add subdirectories
         for p in prefixes:
-            # Get the relative name of the subdirectory
             relative_name = os.path.relpath(p, prefix).rstrip("/")
-            logger.info(f"Relative name: {relative_name}")
             if "/" not in relative_name:
                 items.append(relative_name + "/")
 
@@ -143,33 +147,22 @@ class GCSSymlinkHandler:
                 continue  # Skip symlink files in listing
 
             relative_name = os.path.relpath(name, prefix)
-            logger.info(f"Relative name: {relative_name}")
             if "/" not in relative_name:
                 items.append(relative_name)
 
-        # Check for a direct symlink to the path
-        symlink_path = path.rstrip("/")
-        logger.info(f"Symlink path: {symlink_path}")
-        symlink_blob = self.bucket.blob(f"{symlink_path}.symlink")
-        logger.info(f"Symlink blob: {symlink_blob}")
-        if symlink_blob.exists():
-            target = self._get_symlink_target(symlink_blob)
-            items.append(f"{os.path.basename(symlink_path)} -> {target}")
         logger.info(f"Items: {items}")
-
         return items
-
-
-def try_read(handler, path):
-    try:
-        data = handler.read(path)
-        print(f"Data at {path}: {data.decode('utf-8')}")
-    except FileNotFoundError as e:
-        print(e)
-
 
 # Example Usage
 if __name__ == "__main__":
+
+    def try_read(handler, path):
+        try:
+            data = handler.read(path)
+            print(f"Data at {path}: {data.decode('utf-8')}")
+        except FileNotFoundError as e:
+            print(e)
+
     bucket_name = "iamwrm1_cloudbuild"
     handler = GCSSymlinkHandler(bucket_name)
 
@@ -178,18 +171,20 @@ if __name__ == "__main__":
         handler.write_symlink("export/data/SZ.prod", "export/data/SZ.version12")
 
         # Write data to nested paths
-        handler.write("export/data/SZ.version12/data.txt", "v12data")
-        handler.write("export/data/SZ.version13/data.txt", "v13data")
+        handler.write("export/data/SZ.version12/data1.txt", "v12data1")
+        handler.write("export/data/SZ.version12/data2.txt", "v12data2")
 
-        data_path = "export/data/SZ.prod/data.txt"
+        handler.write("export/data/SZ.version13/data1.txt", "v13data1")
+        handler.write("export/data/SZ.version13/data2.txt", "v13data2")
+
         # should print v12data
-        try_read(handler, data_path)
+        try_read(handler, "export/data/SZ.version12/data1.txt")
+        try_read(handler, "export/data/SZ.version12/data2.txt")
 
         handler.write_symlink("export/data/SZ.prod", "export/data/SZ.version13")
 
-        data_path = "export/data/SZ.prod/data.txt"
-        # should print v13data
-        try_read(handler, data_path)
+        try_read(handler, "export/data/SZ.version13/data1.txt")
+        try_read(handler, "export/data/SZ.version13/data2.txt")
 
     def b():
         # List contents of /export/data/
@@ -197,6 +192,7 @@ if __name__ == "__main__":
         items = handler.ls("export/data/")
         for item in items:
             print(item)
+        print("------")
 
         items = handler.ls("export/data/SZ.prod/")
         for item in items:
