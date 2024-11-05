@@ -23,7 +23,7 @@ run_go_build_and_execute() {
     start_time=$(date +%s)
     echo "Run golang in $DOCKER_NAME"
     docker run --rm -v "$(pwd):/data/" -w /data $DOCKER_NAME \
-        /bin/bash -c "CGO_ENABLED=1 GOOS=linux go build -o read_data && ./read_data"
+        /bin/bash -c "CGO_ENABLED=1 go build -o read_data && ./read_data"
     end_time=$(date +%s)
     elapsed_time=$((end_time - start_time))
     echo "Build time: $elapsed_time seconds"
