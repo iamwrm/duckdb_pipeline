@@ -6,3 +6,5 @@ compile_commands.json
 
 a.out
 local_data/
+.aider*
+.env

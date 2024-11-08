@@ -12,9 +12,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/zlib-ng/zlib-ng.git
     GIT_TAG 2.1.3
 )
-set(ZLIB_COMPAT ON CACHE BOOL "Compile with zlib compatible API")
 set(ZLIB_ENABLE_TESTS OFF CACHE BOOL "Build test binaries")
 FetchContent_MakeAvailable(zlib-ng)
+FetchContent_GetProperties(zlib-ng SOURCE_DIR ZLIB_NG_SOURCE_DIR BINARY_DIR ZLIB_NG_BINARY_DIR)
 
 # Fetch Catch2
 FetchContent_Declare(
@@ -28,8 +28,15 @@ FetchContent_MakeAvailable(Catch2)
 add_library(compression_lib
     src/compression.cpp
 )
-target_link_libraries(compression_lib PRIVATE zlib)
-target_include_directories(compression_lib PUBLIC include)
+
+target_link_libraries(compression_lib PRIVATE 
+    zlib-ng
+)
+
+target_include_directories(compression_lib 
+    PUBLIC include
+    PRIVATE ${ZLIB_NG_SOURCE_DIR} ${ZLIB_NG_BINARY_DIR}
+)
 
 # Add test executable
 add_executable(compression_tests
