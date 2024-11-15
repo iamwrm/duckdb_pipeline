@@ -1,0 +1,4 @@
+- Step 1: Write a c program that use sytem's libcurl to print google.com
+- Use strace to see what files are read during the cmake and make process
+- copy all the files to a new directory
+- In a new docker container, try to rebuild the program
