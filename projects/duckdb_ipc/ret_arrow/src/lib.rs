@@ -4,8 +4,11 @@ use arrow_data::ffi::FFI_ArrowArray;
 use arrow_schema::ffi::FFI_ArrowSchema;
 use std::sync::Arc;
 
+/// # Safety
+///
+/// This function is unsafe because it dereferences raw pointers.
 #[no_mangle]
-pub extern "C" fn create_arrow_array(
+pub unsafe extern "C" fn create_arrow_array(
     out_array: *mut FFI_ArrowArray,
     out_schema: *mut FFI_ArrowSchema,
 ) {
