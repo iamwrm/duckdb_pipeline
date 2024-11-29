@@ -1,0 +1,13 @@
+[package]
+name = "ret_arrow"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+arrow-array = { version = "53.3.0", features = ["ffi"] }
+arrow-data = "53.3.0"
+arrow-schema = "53.3.0"
+
+[lib]
+name = "ret_arrow"
+crate-type = ["cdylib", "rlib"]

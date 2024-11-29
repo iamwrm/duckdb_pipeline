@@ -21,6 +21,7 @@ fn process_line(line: &str, re: &Regex) -> Option<FileLine> {
     None
 }
 
+
 fn main() -> io::Result<()> {
     // Create regex pattern for matching system calls and their paths
     let re = Regex::new(r#"(?m)(open|openat|stat|access|execve)\(.*?"([^"]+)"#).unwrap();
