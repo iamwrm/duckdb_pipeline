@@ -1,7 +1,18 @@
 from e import Cli
 
-if __name__ == "__main__":
-    cli = Cli()
-    cli.with_cmd("echo 123 && sleep 3 && echo 'Hello, World1!'")
-    cli.with_cmd("echo 456 && sleep 3 && echo 'Hello, World2!'")
+
+def test_cli():
+    cli = (
+        Cli()
+        .with_workdir("/tmp")
+        .with_cmd("echo 123 && sleep 3 && echo 'Hello, World1!' > test.txt")
+        .with_cmd("echo 456 && sleep 4 && echo 'Hello, World2!' >> test.txt")
+    )
     cli.run_con()
+
+    result = cli.read_file("test.txt").decode()
+
+    assert result == "Hello, World1!\nHello, World2!\n"
+    cli.write_file("test.txt", "Hello, World3!\nHello, World4!\n".encode())
+    result = cli.read_file("test.txt").decode()
+    assert result == "Hello, World3!\nHello, World4!\n"

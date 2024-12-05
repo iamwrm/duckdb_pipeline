@@ -1,33 +1,53 @@
-from pydantic import BaseModel
-from typing import Dict, List
+from typing import Dict, List, Optional
 import subprocess
 import os
 import asyncio
-from loguru import logger
 import sys
 import fcntl
 
+from loguru import logger
+from pydantic import BaseModel
+
 # Configure loguru loggers
 logger.remove()
-logger.add(lambda msg: print(f"\033[32m{msg}\033[0m", flush=True), filter=lambda record: "stdout" in record["extra"])
-logger.add(lambda msg: print(f"\033[31m{msg}\033[0m", flush=True, file=sys.stderr), filter=lambda record: "stderr" in record["extra"])
+logger.add(
+    lambda msg: print(f"\033[32m{msg}\033[0m", flush=True, end=""),
+    filter=lambda record: "stdout" in record["extra"],
+)
+logger.add(
+    lambda msg: print(f"\033[31m{msg}\033[0m", flush=True, end="", file=sys.stderr),
+    filter=lambda record: "stderr" in record["extra"],
+)
+
 
 class Cli(BaseModel):
-    workdir: str = "/tmp/"
+    workdir: Optional[str] = None
     env: Dict[str, str] = {}
     commands: List[str] = []
 
-    def with_workdir(self, workdir: str) -> 'Cli':
+    def with_workdir(self, workdir: str) -> "Cli":
         self.workdir = workdir
         return self
 
-    def with_env(self, env: Dict[str, str]) -> 'Cli':
-        self.env.update(env)  
+    def with_env(self, env: Dict[str, str]) -> "Cli":
+        self.env.update(env)
         return self
 
-    def with_cmd(self, cmd: str) -> 'Cli':
+    def with_cmd(self, cmd: str) -> "Cli":
         self.commands.append(cmd)
         return self
+
+    def read_file(self, filename: str) -> bytes:
+        filepath = os.path.join(self.workdir, filename)
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"File not found: {filepath}")
+        with open(filepath, "rb") as f:
+            return f.read()
+
+    def write_file(self, filename: str, content: bytes) -> None:
+        filepath = os.path.join(self.workdir, filename)
+        with open(filepath, "wb") as f:
+            f.write(content)
 
     def _set_non_blocking(self, pipe):
         fd = pipe.fileno()
@@ -37,7 +57,7 @@ class Cli(BaseModel):
     def _process_output(self, proc: subprocess.Popen) -> None:
         self._set_non_blocking(proc.stdout)
         self._set_non_blocking(proc.stderr)
-        
+
         while proc.poll() is None:
             try:
                 stdout_line = proc.stdout.readline() if proc.stdout else None
@@ -61,7 +81,7 @@ class Cli(BaseModel):
 
     def run_seq(self) -> None:
         merged_env = {**os.environ.copy(), **self.env}
-        
+
         for cmd in self.commands:
             proc = subprocess.Popen(
                 cmd,
@@ -71,22 +91,22 @@ class Cli(BaseModel):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=1,
-                universal_newlines=False
+                universal_newlines=False,
             )
             self._process_output(proc)
-            
+
             if proc.returncode != 0:
                 raise subprocess.CalledProcessError(proc.returncode, cmd)
 
     async def _run_cmd_async(self, cmd: str) -> None:
         merged_env = {**os.environ.copy(), **self.env}
-        
+
         proc = await asyncio.create_subprocess_shell(
             cmd,
             cwd=self.workdir,
             env=merged_env,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
 
         async def read_stream(stream, is_stdout=True):
@@ -100,8 +120,7 @@ class Cli(BaseModel):
                     logger.bind(stderr=True).error(line.decode().strip())
 
         await asyncio.gather(
-            read_stream(proc.stdout, True),
-            read_stream(proc.stderr, False)
+            read_stream(proc.stdout, True), read_stream(proc.stderr, False)
         )
 
         await proc.wait()
