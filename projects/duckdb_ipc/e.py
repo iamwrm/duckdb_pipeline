@@ -2,11 +2,10 @@ from typing import Dict, List, Optional
 import subprocess
 import os
 import asyncio
+from loguru import logger
 import sys
 import fcntl
-
-from loguru import logger
-from pydantic import BaseModel
+import paramiko
 
 # Configure loguru loggers
 logger.remove()
@@ -20,10 +19,12 @@ logger.add(
 )
 
 
-class Cli(BaseModel):
+class Cli:
     workdir: Optional[str] = None
     env: Dict[str, str] = {}
     commands: List[str] = []
+    remote_host: Optional[str] = None
+    ssh_client: Optional[paramiko.SSHClient] = None
 
     def with_workdir(self, workdir: str) -> "Cli":
         self.workdir = workdir
@@ -37,17 +38,73 @@ class Cli(BaseModel):
         self.commands.append(cmd)
         return self
 
+    def with_remote_ssh(self, hostname: str) -> "Cli":
+        self.remote_host = hostname
+
+        # Setup SSH client
+        self.ssh_client = paramiko.SSHClient()
+        self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # Try to load system host keys
+        try:
+            self.ssh_client.load_system_host_keys()
+        except Exception as e:
+            logger.error(f"Failed to load system host keys: {e}")
+
+        # Connect using SSH config
+        config = paramiko.SSHConfig()
+        try:
+            with open(os.path.expanduser("~/.ssh/config")) as f:
+                config.parse(f)
+        except Exception as e:
+            logger.error(f"Failed to load SSH config: {e}")
+
+        host_config = config.lookup(hostname)
+
+        # Get connection details from SSH config
+        hostname = host_config.get("hostname", hostname)
+        username = host_config.get("user")
+        key_filename = host_config.get("identityfile", [None])[0]
+        port = int(host_config.get("port", 22))
+
+        try:
+            self.ssh_client.connect(
+                hostname=hostname,
+                username=username,
+                key_filename=key_filename,
+                port=port,
+            )
+        except Exception as e:
+            logger.error(f"Failed to connect to {hostname}: {str(e)}")
+
+        return self
+
     def read_file(self, filename: str) -> bytes:
         filepath = os.path.join(self.workdir, filename)
-        if not os.path.exists(filepath):
-            raise FileNotFoundError(f"File not found: {filepath}")
-        with open(filepath, "rb") as f:
-            return f.read()
+
+        if self.remote_host and self.ssh_client:
+            sftp = self.ssh_client.open_sftp()
+            with sftp.file(filepath, "rb") as f:
+                content = f.read()
+            sftp.close()
+            return content
+        else:
+            if not os.path.exists(filepath):
+                raise FileNotFoundError(f"File not found: {filepath}")
+            with open(filepath, "rb") as f:
+                return f.read()
 
     def write_file(self, filename: str, content: bytes) -> None:
         filepath = os.path.join(self.workdir, filename)
-        with open(filepath, "wb") as f:
-            f.write(content)
+
+        if self.remote_host and self.ssh_client:
+            sftp = self.ssh_client.open_sftp()
+            with sftp.file(filepath, "wb") as f:
+                f.write(content)
+            sftp.close()
+        else:
+            with open(filepath, "wb") as f:
+                f.write(content)
 
     def _set_non_blocking(self, pipe):
         fd = pipe.fileno()
@@ -79,7 +136,47 @@ class Cli(BaseModel):
         for line in proc.stderr:
             logger.bind(stderr=True).error(line.decode().strip())
 
+    async def _run_remote_cmd(self, cmd: str) -> None:
+        if not self.ssh_client:
+            raise Exception("SSH client not initialized")
+
+        # Prepare command with environment variables and working directory
+        full_cmd = ""
+        if self.env:
+            env_str = " ".join(f"{k}={v}" for k, v in self.env.items())
+            full_cmd += f"export {env_str}; "
+        if self.workdir:
+            full_cmd += f"cd {self.workdir}; "
+        full_cmd += cmd
+
+        stdin, stdout, stderr = self.ssh_client.exec_command(full_cmd)
+
+        # Process output asynchronously
+        async def monitor_output(stream, is_stdout=True):
+            while True:
+                line = stream.readline()
+                if not line:
+                    break
+                if is_stdout:
+                    logger.bind(stdout=True).info(line.strip())
+                else:
+                    logger.bind(stderr=True).error(line.strip())
+
+        await asyncio.gather(
+            asyncio.to_thread(monitor_output, stdout, True),
+            asyncio.to_thread(monitor_output, stderr, False),
+        )
+
+        exit_status = stdout.channel.recv_exit_status()
+        if exit_status != 0:
+            raise subprocess.CalledProcessError(exit_status, cmd)
+
     def run_seq(self) -> None:
+        if self.remote_host:
+            for cmd in self.commands:
+                asyncio.run(self._run_remote_cmd(cmd))
+            return
+
         merged_env = {**os.environ.copy(), **self.env}
 
         for cmd in self.commands:
@@ -99,6 +196,10 @@ class Cli(BaseModel):
                 raise subprocess.CalledProcessError(proc.returncode, cmd)
 
     async def _run_cmd_async(self, cmd: str) -> None:
+        if self.remote_host:
+            await self._run_remote_cmd(cmd)
+            return
+
         merged_env = {**os.environ.copy(), **self.env}
 
         proc = await asyncio.create_subprocess_shell(
@@ -133,3 +234,7 @@ class Cli(BaseModel):
             await asyncio.gather(*tasks)
 
         asyncio.run(main())
+
+    def __del__(self):
+        if self.ssh_client:
+            self.ssh_client.close()
