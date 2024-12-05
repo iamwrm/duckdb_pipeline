@@ -2,21 +2,11 @@ from typing import Dict, List, Optional
 import subprocess
 import os
 import asyncio
-from loguru import logger
 import sys
 import fcntl
 import paramiko
 
-# Configure loguru loggers
-logger.remove()
-logger.add(
-    lambda msg: print(f"\033[32m{msg}\033[0m", flush=True, end=""),
-    filter=lambda record: "stdout" in record["extra"],
-)
-logger.add(
-    lambda msg: print(f"\033[31m{msg}\033[0m", flush=True, end="", file=sys.stderr),
-    filter=lambda record: "stderr" in record["extra"],
-)
+from loguru import logger
 
 
 class Cli:
@@ -106,6 +96,44 @@ class Cli:
             with open(filepath, "wb") as f:
                 f.write(content)
 
+    def _configure_logger(self):
+        logger.remove()  # Remove any existing handlers
+
+        if self.plain_logging:
+            # Plain logging - just print the message
+            logger.add(
+                lambda msg: print(msg.record["message"], end="\n", flush=True),
+                filter=lambda record: "stdout" in record["extra"],
+            )
+            logger.add(
+                lambda msg: print(
+                    msg.record["message"], end="\n", flush=True, file=sys.stderr
+                ),
+                filter=lambda record: "stderr" in record["extra"],
+            )
+        else:
+            # Colored logging with green for stdout and red for stderr
+            logger.add(
+                lambda msg: print(
+                    f"\033[32m{msg.record['message']}\033[0m", end="\n", flush=True
+                ),
+                filter=lambda record: "stdout" in record["extra"],
+            )
+            logger.add(
+                lambda msg: print(
+                    f"\033[31m{msg.record['message']}\033[0m",
+                    end="\n",
+                    flush=True,
+                    file=sys.stderr,
+                ),
+                filter=lambda record: "stderr" in record["extra"],
+            )
+
+    def with_log(self, plain: bool = False) -> "Cli":
+        self.plain_logging = plain
+        self._configure_logger()
+        return self
+
     def _set_non_blocking(self, pipe):
         fd = pipe.fileno()
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -151,10 +179,9 @@ class Cli:
 
         stdin, stdout, stderr = self.ssh_client.exec_command(full_cmd)
 
-        # Process output asynchronously
-        async def monitor_output(stream, is_stdout=True):
+        async def read_output(stream, is_stdout=True):
             while True:
-                line = stream.readline()
+                line = await asyncio.to_thread(stream.readline)
                 if not line:
                     break
                 if is_stdout:
@@ -162,10 +189,8 @@ class Cli:
                 else:
                     logger.bind(stderr=True).error(line.strip())
 
-        await asyncio.gather(
-            asyncio.to_thread(monitor_output, stdout, True),
-            asyncio.to_thread(monitor_output, stderr, False),
-        )
+        # Use asyncio.gather to wait for both streams
+        await asyncio.gather(read_output(stdout, True), read_output(stderr, False))
 
         exit_status = stdout.channel.recv_exit_status()
         if exit_status != 0:
